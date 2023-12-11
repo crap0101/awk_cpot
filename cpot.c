@@ -69,15 +69,16 @@ do_setsym(int nargs,
 	  __attribute__((unused)) struct awk_ext_func *finfo)
 {
   /*
-  * Sets the symbol $nargs[0] (as a string) to the scalar value $nargs[1].
-  */
+   * Sets the symbol $nargs[0] (as a string) to the scalar value $nargs[1].
+   * Mimic SYMTAB["varname"] = value
+   */
   
   assert(result != NULL);
   make_number(0.0, result);
   awk_value_t var_name, var_value, new_val;
   
-  if (nargs != 2)
-    fatal(ext_id, "two arguments expected: symbol, value\n");
+  if (nargs > 2)
+    dprint("two many arguments! 2 expected: symbol, value\n");
 
   if (! get_argument(0, AWK_STRING, & var_name)) {
     if (var_name.val_type != AWK_STRING)
