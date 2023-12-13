@@ -5,14 +5,11 @@
 @include "testing"
 # https://github.com/crap0101/awk_testing
 
-function foo(symstr, val) {
-    cpot::setsym(symstr, val)
-}
 
 BEGIN {
-
     testing::start_test_report()
 
+    PROCINFO["sorted_in"] = "@ind_num_asc"
     # TEST setsym
     split("1", a, ":")
     a[0] = @/^.*?x+9$/
@@ -26,8 +23,16 @@ BEGIN {
     av[0] = "v0"
     for (i in a) {
         r = cpot::setsym(av[i], a[i])
-	testing::assert_true(r, 1, sprintf("> setsym: return true [%s]", SYMTAB[av[i]]))
-	testing::assert_equal(typeof(SYMTAB[av[i]]), typeof(a[i]), 1, sprintf("> setsym: typeof() [%s|%s]",  typeof(a[i]), typeof(av[i])))
+	at = typeof(a[i])
+	avt = typeof(SYMTAB[av[i]])
+	testing::assert_true(r, 1, sprintf("> setsym: retcode %d [%s]", r, SYMTAB[av[i]]))
+	print "***" at "|" avt
+	if (awkpot::cmp_version(awkpot::get_version(), "5.3.0", "awkpot::lt", 1, 1))
+	    # for the untyped/unassigned change of behaviour (see NOTE_1 in arrlib_test.awk)
+	    if (at == "untyped")
+		testing::assert_true(avt == at || avt == "unassigned", 1, sprintf("> setsym: typeof() [%s|%s]", at, avt))
+	else
+	    testing::assert_equal(avt, av, 1, sprintf("> setsym: typeof() [%s|%s]", at, avt))
 	testing::assert_equal(SYMTAB[av[i]], a[i], 1, sprintf("> setsym: equals [%s]", SYMTAB[av[i]]))
     }
 
