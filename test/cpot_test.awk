@@ -1,3 +1,4 @@
+
 @load "cpot"
 
 @include "awkpot"
@@ -9,8 +10,50 @@
 BEGIN {
     testing::start_test_report()
 
-    PROCINFO["sorted_in"] = "@ind_num_asc"
+
+    # TEST rindex
+    awkpot::random(0, 0, 1)
+    split("abcde foobar barbazbar", a, " ")
+    for (i in a) {
+	start = awkpot::random(length(a[i])+1)
+	end = awkpot::random(length(a[i])+1)
+	start = start ? start : 1
+	end = end ? end : 1
+	s = substr(a[i], start, end)
+	testing::assert_true(cpot::rindex(a[i], s), 1, sprintf("rindex <%s> <%s>", a[i], s))
+	for (j=1; j<=length(a[i]); j++) {
+	    s = substr(a[i], 1, j)
+	    testing::assert_true(cpot::rindex(a[i], s), 1, sprintf("rindex <%s> <%s>", a[i], s))
+	    s = substr(a[i], j)
+	    testing::assert_true(cpot::rindex(a[i], s), 1, sprintf("rindex <%s> <%s>", a[i], s))
+	}
+    }
+    testing::assert_true(cpot::rindex("barr", "r"), 1, "rindex barr r")
+    testing::assert_true(cpot::rindex("barr", "rr"), 1, "rindex barr rr")
+    testing::assert_true(cpot::rindex("barr", "ar"), 1, "rindex barr ar")
+    testing::assert_true(cpot::rindex("barr", "b"), 1, "rindex barr b")
+    testing::assert_true(cpot::rindex("barr", "ba"), 1, "rindex barr ba")
+    testing::assert_true(cpot::rindex("bbarr", "ba"), 1, "rindex bbarr ba")
+    testing::assert_true(cpot::rindex("bbarr", "bb"), 1, "rindex bbarr bb")
+    # test no match
+    testing::assert_false(cpot::rindex("bbarr", "x"), 1, "! rindex bbarr x")
+    testing::assert_false(cpot::rindex("bbarr", ""), 1, "! rindex bbarr \"\"")
+    testing::assert_false(cpot::rindex("", "bb"), 1, "! rindex \"\" bb")
+    testing::assert_false(cpot::rindex("bb", "bba"), 1, "! rindex bb bba")
+    # test fatal
+    cmd = sprintf("%s -l cpot 'BEGIN {cpot::rindex()}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "! rindex: wrong call, no args: fatal")
+    cmd = sprintf("%s -l cpot 'BEGIN {cpot::rindex(1)}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "! rindex: wrong call, not enough args: fatal")
+    cmd = sprintf("%s -l cpot 'BEGIN {cpot::rindex(1, 2, 3)}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "! rindex: wrong call, too many args: fatal")
+    cmd = sprintf("%s -l cpot 'BEGIN {a[0];cpot::rindex(2, a)}'", ARGV[0])
+    testing::assert_false(awkpot::exec_command(cmd), 1, "! rindex: wrong call, wrong type arg: fatal")
+
     # TEST setsym
+    delete a
+    PROCINFO["sorted_in"] = "@ind_num_asc"
+
     split("1", a, ":")
     a[0] = @/^.*?x+9$/
     # a[1] is strnum 1

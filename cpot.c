@@ -23,12 +23,14 @@ static const char *ext_version = "0.1";
 #include "awk_extensions.h"
 // https://github.com/crap0101/laundry_basket/blob/master/awk_extensions.h
 
+static awk_value_t * do_rindex(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 static awk_value_t * do_setsym(int nargs, awk_value_t *result, struct awk_ext_func *finfo);
 
 /* ----- boilerplate code ----- */
 int plugin_is_GPL_compatible;
 
 static awk_ext_func_t func_table[] = {
+  { "rindex", do_rindex, 2, 2, awk_false, NULL },
   { "setsym", do_setsym, 2, 2, awk_false, NULL },
 };
 
@@ -61,6 +63,73 @@ int dl_load(const gawk_api_t *api_p, void *id) {
 }
 
 /* ----- end of boilerplate code ----------------------- */
+
+
+static awk_value_t*
+do_rindex(int nargs,
+	  awk_value_t *result,
+	  __attribute__((unused)) struct awk_ext_func *finfo)
+{
+  /*
+   * Find the *last* occurrence of the string at $nargs[1] in the
+   * string of $nargs[0]. Return the index of $nargs[0] at which
+   * the occurrence was found, or 0.
+   */
+  assert(result != NULL);
+  make_number(0.0, result);
+
+  awk_value_t str, sub;
+  size_t istr, isub, max_len, found_at;
+
+  if (nargs > 2)
+    fatal(ext_id, "rindex expects two arguments\n");
+  
+  if (! get_argument(0, AWK_STRING, & str)) {
+    if (str.val_type != AWK_STRING)
+      fatal(ext_id, "wrong type argument: <%s> (expected: <%s>)\n",
+	    _val_types[str.val_type], name_to_string(AWK_STRING));
+    else
+      fatal(ext_id, "can't retrieve 1st arg\n");
+  }
+  if (! get_argument(1, AWK_STRING, & sub)) {
+    if (sub.val_type != AWK_STRING)
+      fatal(ext_id, "wrong type argument: <%s> (expected: <%s>)\n",
+	    _val_types[sub.val_type], name_to_string(AWK_STRING));
+    else
+      fatal(ext_id, "can't retrieve 2nd arg\n");
+  }
+
+  if (0 == str.str_value.len ||
+      0 == sub.str_value.len ||
+      str.str_value.len < sub.str_value.len)
+    return result;
+
+  max_len = str.str_value.len - sub.str_value.len;
+
+  for (found_at = isub = istr = 0; istr < str.str_value.len; istr++) {
+    //printf("[%c] [%c] (%lu|%lu)\n",str.str_value.str[istr],sub.str_value.str[isub], istr,isub);
+    if (isub == sub.str_value.len) { // end of sub, found a match
+      found_at = istr - sub.str_value.len + 1;
+      isub = 0;
+    }
+    if (str.str_value.str[istr] != sub.str_value.str[isub++]) {
+      isub = 0;
+      // re-check from the start of subs
+      if (str.str_value.str[istr] != sub.str_value.str[isub++])
+	isub = 0;
+    }
+    // towards str's end, impossible match
+    if ((istr > max_len) && isub == 0)
+      break;
+  }
+
+  if (isub == sub.str_value.len)  // re-check for a dangling match
+    found_at = istr - sub.str_value.len + 1;
+
+  if (0 < found_at)
+    make_number(found_at, result);
+  return result;
+}
 
 
 static awk_value_t*
